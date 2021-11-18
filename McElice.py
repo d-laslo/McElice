@@ -3,7 +3,7 @@ from source import *
 from random import sample
 import numpy as np
 
-class McEllice:
+class McElice:
     def __init__(self, p, g, n = 0):
         self.__GC_flag = False
         if n != 0:
