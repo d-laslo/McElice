@@ -24,6 +24,61 @@ class GoppaCode:
         # tt = mul_matrix(self.__H, transpose(self.__G), self.__p)
         # tt = 0
 
+
+    @property
+    def H(self):
+        return self.__H
+
+
+    @property
+    def G(self):
+        return self.__G
+    
+
+    @property
+    def n(self):
+        return self.__n
+
+
+    @property
+    def p(self):
+        return self.__p
+
+
+    @property
+    def t(self):
+        return self.__t
+
+
+    @property
+    def r(self):
+        return self.__r
+
+
+    @property
+    def m(self):
+        return self.__m
+
+
+    @property
+    def k(self):
+        return self.__k
+
+
+    @property
+    def d(self):
+        return self.__d
+
+    
+    @property
+    def L(self):
+        return self.__L
+
+
+    @property
+    def g(self):
+        return self.__g
+
     
     def __get_prime_element(self):
         return 8
