@@ -3,7 +3,7 @@ from source import *
 from random import sample
 import numpy as np
 
-class McElice:
+class McEliece:
     def __init__(self, p, g, n = 0):
         self.__GC_flag = False
         if n != 0:
@@ -187,7 +187,7 @@ if __name__ == '__main__':
     p = 19
     g = [1, 0, 1, 0, 1]
     n = 12
-    mc = McEllice(p, g ,n)
+    mc = McEliece(p, g ,n)
 
     e_msg = mc.encrypt(5, mc.publick_key)
     d_msg = mc.decrypt(e_msg, mc.private_key)
