@@ -5,25 +5,23 @@ from copy import copy
 from random import randint
 
 class GoppaCode:
-    def __init__(self, n, p, g):
+    def __init__(self, p, g, n = 0):
         self.__p = p
         self.__n = n
 
         self.__t = (len(g) - 1) // 2
         self.__r = len(g) - 1
         self.__m = len(bin(self.__p)[2:]) - 1
-        self.__k = self.__n - self.__r#self.__m * self.__t
-        self.__d = self.__n - self.__k + 1 #2 * self.__t + 1
+        
+        if self.__n != 0:
+            self.__k = self.__n - self.__r
+            self.__d = self.__n - self.__k + 1
 
-        self.__L = self.__gen_L()
-        self.__prime_element = self.__get_prime_element()
-        self.__g = self.__get_g(g)
-        self.__H = self.__gen_H()
-        self.__G = self.__gen_G()
-        # print(*self.__H)
-        # tt = mul_matrix(self.__H, transpose(self.__G), self.__p)
-        # tt = 0
-
+            self.__L = self.__gen_L()
+            self.__prime_element = self.__get_prime_element()
+            self.__g = self.__get_g(g)
+            self.__H = self.__gen_H()
+            self.__G = self.__gen_G()
 
     @property
     def H(self):
