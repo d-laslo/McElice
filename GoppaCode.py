@@ -9,8 +9,8 @@ class GoppaCode:
         self.__p = p
         self.__n = n
 
-        self.__t = (len(g) - 1) // 2
-        self.__r = len(g) - 1
+        self.__t = len(g) - 1
+        self.__r = self.__t * 2
         self.__m = len(bin(self.__p)[2:]) - 1
         
         if self.__n != 0:
@@ -22,6 +22,8 @@ class GoppaCode:
             self.__g = self.__get_g(g)
             self.__H = self.__gen_H()
             self.__G = self.__gen_G()
+            # t = mul_matrix(self.__H, self.__G, self.__p)
+            # tt = 0
 
     @property
     def H(self):
@@ -83,8 +85,13 @@ class GoppaCode:
 
     
     def __get_g(self, g):
-        g[-1] = self.__prime_element
-        return g
+        g.pop(-1)
+        gg = []
+        for i in g:
+            gg.append(i)
+            gg.append(0)
+        gg.append(self.__mul(self.__prime_element, self.__prime_element))
+        return gg
 
 
     def __mul(self, x1, x2):
@@ -101,6 +108,7 @@ class GoppaCode:
 
     def __calc_g(self, x):
         g = self.__g[::-1][1:]
+        prime = self.__g[-1]
         base = 1
         res = 0
         for i in range(len(g)):
@@ -108,12 +116,20 @@ class GoppaCode:
             # res ^= self.__mul(i, base)
             # base = self.__mul(base, x)
 
-        return res ^ self.__prime_element
+        return res ^ prime
 
     
     def __gen_L(self):
-        return [4, 8, 3, 6, 12, 11, 5, 10, 7, 14, 15, 13]
-        return [i for i in range(self.__n)]
+        L = [0, 1]
+        for i in range(2, self.__n):
+            r = L[-1] << 1
+            if len(bin(r)[2:]) > self.__m:
+                r ^= self.__p
+            L.append(r)
+
+        return L
+        # return [4, 8, 3, 6, 12, 11, 5, 10, 7, 14, 15, 13]
+        # return [i for i in range(self.__n)]
 
     
     def __gen_H(self):
@@ -174,7 +190,8 @@ class GoppaCode:
         equations = equations[::-1]
         max_num = 2**gt_size_element - 1 #2**(self.__m * self.__r) - 1
         while True:
-            G_T = [0 for i in range(gt_size)] 
+            # G_T = [0 for i in range(gt_size)]
+            G_T =  [2**i for i in range(self.__k)][::-1] + [0 for i in range(gt_size - self.__k)]
             for itr in equations:
                 indexes = get_indexes(itr)
                 for i in range(len(indexes)):
@@ -234,8 +251,25 @@ class GoppaCode:
                     reslt_matrix.append([int(i, 2) for i in list(row)])
                 return reslt_matrix
 
+
+            # bed_ind = []
+            # # G_T = G_T
+            # for ind in range(len(bH)):
+            #     sum = 0
+            #     for i in bH[ind]:
+            #         if i:
+            #             sum ^= G_T[i]
+            #     if sum !=0:
+            #         bed_ind.append(ind)
+            # tt = 0
+
+
+            # GGT = split(G_T, self.__k)
+            # tt = np.dot(bH, GGT) %2
             G = binary_transpose(G_T, self.__k)
-            # if min(G) > 0:
+            # tt = split(G, self.__n)
+            if min(G) == 0:
+                continue
             #     if is_transpose:
             #         gg = split(G_T, 12)
             #         return gg
@@ -245,5 +279,4 @@ class GoppaCode:
 
 
 if __name__ == '__main__':
-   GoppaCode(12, 19, [1, 0, 1, 0, 1])
-#    GoppaCode(12, 19, [1, 1, 1])
+   GoppaCode(19, [1,1,1], 16)
