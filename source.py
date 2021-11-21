@@ -1,4 +1,5 @@
 import numpy as np
+from copy import copy
 
 
 def read(path):
@@ -32,6 +33,9 @@ def mod(x, pol):
             bx = bin(x)[2:]
         return x
 
+
+# множення елементів із поля яке генерує поліном pol
+# pol заданий як десяткове число
 def mul(x1, x2, pol):
     if x1 == 0 or x2 == 0:
             return 0
@@ -45,6 +49,32 @@ def mul(x1, x2, pol):
     return norm(res, pol)
 
 
+# множення поліномів коефіцієнти якого є елементами із поля яке генерує поліном pol
+# pol заданий як десяткове число
+def mul_p(multiplier1, multiplier2, pol):
+    if len(multiplier1) > len(multiplier2):
+        multiplier1, multiplier2 = multiplier2, multiplier1
+
+    mult1_s = len(multiplier1)
+    mult2_s = len(multiplier2)
+    res = [0 for i in range(mult1_s + mult2_s - 1)]
+
+    for i in range(mult2_s):
+        tmp = copy(multiplier1)
+        for j in range(len(tmp)):
+            tmp[j] = mul(tmp[j], multiplier2[i], pol)
+
+        tmp = tmp + [0 for i in range(mult1_s + mult2_s - i - 1 - len(tmp))]
+        tmp = tmp[::-1]
+
+        for j in range(len(tmp)):
+            res[j] ^= tmp[j]
+    res = res[::-1]
+    return res
+
+
+# ділення двох елементів із поля, що генерує поліном pol
+# pol заданий як десяткове число
 def div(divided, divider):
     quotient = 0
     ldivider = len(bin(divider)[2:])
@@ -55,6 +85,48 @@ def div(divided, divider):
     return quotient
 
 
+# ділення поліномів коефіцієнти якого є елементами із поля яке генерує поліном pol
+# pol заданий як десяткове число
+def div_p(divided, divider, pol):
+    if len(divider) > len(divided):
+        return [[0], divided]
+
+    quotient = [0 for i in range(len(divided))]
+    divider_l = len(divider)
+
+    inv = mod_inverse(divider[0], pol)
+    for i in range(divider_l):
+        divider[i] = mul(divider[i], inv, pol)
+
+
+    while len(divided) >= divider_l:
+        divided_l = len(divided)
+
+        mult = divided[0]
+        quotient[divided_l - divider_l] = mul(mult, inv, pol)
+
+        tmp = copy(divider)
+        for i in range(len(tmp)):
+            tmp[i] = mul(tmp[i], mult, pol)
+
+        tmp = tmp + [0 for i in range(divided_l - divider_l)]
+        for i in range(divided_l):
+            divided[i] ^= tmp[i]
+
+        while len(divided) > 0 and divided[0] == 0:
+            divided.pop(0)
+    
+    if len(divided) == 0:
+        return [1, 0]
+
+    quotient = quotient[::-1]
+    while len(quotient) > 0 and quotient[0] == 0:
+        quotient.pop(0)
+    return [quotient, divided]
+
+
+# піднесення до степення елементів поля, що генерує поліном pol
+# pol заданий як десяткове число
 def pow(base, exponenta, pol):
     itr = bin(exponenta)[2:][::-1]
     tmp = base
@@ -66,6 +138,8 @@ def pow(base, exponenta, pol):
     return result
 
 
+# обернений за модулем елемент із поля яке генерує поліном pol
+# pol заданий як десяткове число
 def mod_inverse(value, module):
     v = [0, 1]
     rem = 1
@@ -80,6 +154,36 @@ def mod_inverse(value, module):
         value = rem
     return v[0]
 
+
+# обернений за поліномом g поліном, елементи якого із поля яке генерує поліном pol
+# pol заданий як десяткове число
+# g заданий як list; g[0] -- найстарший елемент
+def mod_inverse_p(element, g, pol):
+    v = [[0], [1]]
+    rem = None
+    value = element
+    a = copy(g)
+
+    while rem == None or len(rem) > 1:
+        t = div_p(copy(a), copy(value), pol)
+        tmp = t[0]
+        rem = t[1]
+
+        tmp_mul = mul_p(copy(v[1]), copy(tmp), pol)
+        v[0] = v[0] + [0 for i in range(len(tmp_mul) - len(v[0]))]
+        for i in range(len(v[0])):
+            v[0][i] ^= tmp_mul[i]
+        v[0], v[1] = v[1], v[0]
+        a = copy(value)
+        value = copy(rem)
+    
+    inv = mod_inverse(rem[0], pol)
+    for i in range(len(v[1])):
+        v[1][i] = mul(inv, v[1][i], pol)
+    return v[1]
+
+
+# повертає індекси не нулбових елементів у двійковому записі числа x
 def get_indexes(x):
     x = bin(x)[2:][::-1]
     ind = []
@@ -90,10 +194,13 @@ def get_indexes(x):
     return ind
 
 
+# транспонує матрицю
 def transpose(matrix):
     return list(np.array(matrix).transpose())
 
 
+# транспонує біти матриці записаної у десятковому записі
+# _len вказує максимальну довжину елемента у бітовому записі
 def binary_transpose(matrix, _len):
     bmatrix = []
     for i in matrix:
@@ -107,6 +214,7 @@ def binary_transpose(matrix, _len):
     return matrix_T
 
 
+# сума елементів із поля характеристики 2
 def sum(a):
     res = 0
     for i in a:
@@ -122,36 +230,36 @@ def sum(a):
 #     return
 
 
-def mul_matrix(m1, m2, pol):
-    # m1 = [
-    #     [1, 5, 12, 4, 10, 3, 1, 3, 4, 2, 2, 10], 
-    #     [8, 11, 13, 9, 1, 0, 9, 3, 13, 14, 12, 11]
-    # ]
+# def mul_matrix(m1, m2, pol):
+#     # m1 = [
+#     #     [1, 5, 12, 4, 10, 3, 1, 3, 4, 2, 2, 10], 
+#     #     [8, 11, 13, 9, 1, 0, 9, 3, 13, 14, 12, 11]
+#     # ]
 
-    # m2 = [
-    #     [0, 0, 1, 1],
-    #     [1, 1, 1, 1],
-    #     [1, 1, 0, 1],
-    #     [0, 1, 1, 0],
-    #     [1, 1, 1, 1],
-    #     [0, 0, 0, 1],
-    #     [1, 0, 0, 0],
-    #     [0, 1, 0, 1],
-    #     [0, 1, 0, 0],
-    #     [1, 0, 0, 0],
-    #     [0, 0, 0, 1],
-    #     [0, 0, 1, 0]
-    # ]
-    # m1 = convert_to_binary_matrix(m1, 4)
-    m2 = transpose(m2)
+#     # m2 = [
+#     #     [0, 0, 1, 1],
+#     #     [1, 1, 1, 1],
+#     #     [1, 1, 0, 1],
+#     #     [0, 1, 1, 0],
+#     #     [1, 1, 1, 1],
+#     #     [0, 0, 0, 1],
+#     #     [1, 0, 0, 0],
+#     #     [0, 1, 0, 1],
+#     #     [0, 1, 0, 0],
+#     #     [1, 0, 0, 0],
+#     #     [0, 0, 0, 1],
+#     #     [0, 0, 1, 0]
+#     # ]
+#     # m1 = convert_to_binary_matrix(m1, 4)
+#     m2 = transpose(m2)
 
-    result = []
-    for m1_row in m1:
-        result.append([])
-        for m2_row in m2:
-            result[-1].append(sum([mul(x1, x2, pol) for x1, x2 in zip(m1_row, m2_row)]))
+#     result = []
+#     for m1_row in m1:
+#         result.append([])
+#         for m2_row in m2:
+#             result[-1].append(sum([mul(x1, x2, pol) for x1, x2 in zip(m1_row, m2_row)]))
 
-    return result
+#     return result
 
 
 def convert_to_binary_matrix(matrix, element_len):
