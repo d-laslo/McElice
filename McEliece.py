@@ -388,7 +388,7 @@ class McEliece:
 
         bmsg = self.__convert_to_binary_vector(msg, k)
         # t = self.__dot(bmsg, self.__S)
-        err = self.__dot(err, self.__P)
+        # err = self.__dot(err, self.__P)
         return self.__convert_to_num(self.__dot(bmsg, Gh) ^ err)
 
 
@@ -400,18 +400,10 @@ class McEliece:
         bmsg = self.__dot(bmsg, self.__calc_inv_P(P))
 
         # знаходимо помилки
-        # bmsg = [0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1]
-        # bmsg = np.array([0,1,1,1,1,0,1,0,1,1,1,0]).astype(np.uint64)
         err = self.__errors(bmsg)
         # # прибираємо помилки
         bmsg = bmsg ^ err
         
-        # G = np.array([
-        #     [0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0],
-        #     [0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0],
-        #     [1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1],
-        #     [1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0]
-        # ]).astype(np.uint64)
         # bmsg = bmsg[self.__GC.r:]
         GG = np.concatenate((transpose(G), bmsg.reshape(self.__GC.n, 1)), axis=1)
         bmsg = self.__get_mS(GG)
