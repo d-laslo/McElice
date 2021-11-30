@@ -1,8 +1,8 @@
-from numpy.lib.function_base import append
+# from numpy.lib.function_base import append
 from source import *
 import numpy as np
 from copy import copy
-# from random import randint
+from itertools import zip_longest
 import random
 import os
 
@@ -24,9 +24,7 @@ class GoppaCode:
             self.__g = self.__get_g(g)
             self.__H = self.__gen_H()
             self.__G = self.__gen_G()
-            # self.__H = self.__tmp_gen_H()
-            # t = np.dot(self.__H, np.array(self.__G).T) % 2
-            # tt = 0
+
 
     @property
     def H(self):
@@ -108,12 +106,9 @@ class GoppaCode:
     def __calc_g(self, x):
         g = self.__g[::-1][1:]
         prime = self.__g[-1]
-        base = 1
         res = 0
         for i in range(len(g)):
             res ^= self.__pow(x, i + 1) * g[i]
-            # res ^= self.__mul(i, base)
-            # base = self.__mul(base, x)
 
         return res ^ prime
 
@@ -127,8 +122,6 @@ class GoppaCode:
             L.append(r)
 
         return L
-        # return [4, 8, 3, 6, 12, 11, 5, 10, 7, 14, 15, 13]
-        # return [i for i in range(self.__n)]
 
     
     def __gen_H(self):
@@ -143,267 +136,200 @@ class GoppaCode:
             H.append([self.__mul(a, inv_g) for a, inv_g in zip(alpha, inverse_g)])
             alpha = [self.__mul(a, l) for a, l in zip(alpha, self.__L)]
 
-        return H
+        bH = convert_to_binary_matrix(H, self.__m)
+        GG = bH
+
+        def find_indx(x, ind):
+            for i in range(len(x)):
+                if x[i][ind] == 1:
+                    return i
+            return None
+
+        def swap_columns(x, ind1, ind2):
+            for i in range(len(x)):
+                x[i][ind1], x[i][ind2]= x[i][ind2], x[i][ind1]
+            self.__L[ind1], self.__L[ind2] = self.__L[ind2], self.__L[ind1]
+
+        def find_column_ind(x, ind):
+            for i in range(len(x[0])):
+                if x[ind][i] == 1:
+                    return i
+
+        for i in range(self.__m * self.__t):
+            ind = find_indx(GG[i:], i)
+            if ind == None:
+                ind_c = find_column_ind(GG, i)
+                swap_columns(GG, i, ind_c)
+                ind = i
+            else:
+                ind += i
+
+            # ind += i
+            max_element = copy(GG[ind])
+            # ind_ = self.__k + i
+            ind_ = i
+            
+            GG[ind] = copy(GG[i])
+            GG[i] = copy(max_element)
+
+            for j in range(i + 1, self.__m * self.__t):
+                if GG[j][ind_] == 1:
+                    GG[j] ^= max_element
+
+
+        mt = self.__m * self.__t
+
+        for i in range(mt - 1):
+            for j in range(i  +1, mt):
+                if GG[i][j] == 1:
+                    GG[i] ^= GG[j]
+
+        
+        return GG
 
 
     def __gen_G(self):
-        bH = convert_to_binary_matrix(self.__H, self.__m)
+        return np.concatenate(
+            (
+                transpose(
+                    np.array([i[-self.__k:] for i in self.__H])
+                ),
+                np.eye(self.__k).astype(np.uint64)
+            ), 
+            axis=1
+        ).astype(np.uint64)
 
-        gt_size = len(bH[0])
-        gt_size_element = self.__k
 
-        equations = []
-        for row in bH:
-            equations.append(int(''.join([str(em) for em in row]), 2))
+    def __sigma(self, msg):
+        def div(divided, divider):
+            return div_p(divided, divider, self.__p)
 
-        # приводимо систему рівнянь до трапецеїдального вигляду
-        for i in range(len(equations)):
-            # max_element = max(equations[i:])
-            ind = index_max_len(equations[i:]) + i
-            max_element = equations[ind]
-            len_max_element = len(bin(max_element)) - 2
+        def mul(multiplier1, multiplier2):
+            return mul_p(multiplier1, multiplier2, self.__p)
 
-            equations[equations.index(max_element)] = equations[i]
-            equations[i] = max_element
+        def inverse(element):
+            ind = 0
+            while element[ind] == 0:
+                ind += 1
+            tmp_e = element[ind:]
+            return mod_inverse_p(tmp_e, self.__g, self.__p)
+            return mod_inverse_p(element, self.__GC.g, self.__GC.p)
 
-            for j in range(i + 1, len(equations)):
-                if equations[j] > 0 and len_max_element == (len(bin(equations[j])) - 2):
-                    equations[j] ^= max_element
 
-        tt = len(bin(equations[0])[2:]) - 1
-        equations = equations[::-1]
-        # equations = equations
-        max_num = 2**gt_size_element - 1 #2**(self.__m * self.__r) - 1
+        R = [self.__L[i] for i in range(len(msg)) if msg[i] == 1]
+        S_error = [0 for i in range(self.__t)]
+
+        for i in R:
+            inv = inverse([1, i])
+            # inv = inv[::-1]
+            t = 0
+            for j in range(len(inv)):
+                S_error[j] ^= inv[j]
+
+        # S_error = S_error[::-1]
+        if sum(S_error) == 0:
+            return None
+
+        T_error = inverse(S_error)
         
-        while True:
-            # # eye = [] #[2**i for i in range(self.__k)]
-            G_T = [0 for i in range(gt_size)]
-            # G_T =  [2**i for i in range(self.__k)][::-1] + [0 for i in range(gt_size - self.__k)]
-            for itr in equations:
-                indexes = get_indexes(itr)
-                for i in range(len(indexes)):
-                    indexes[i] = tt - indexes[i]
-
-                # знаходимо індекси всіх незаповнених елементів матриці G
-                null_indexes = []
-                for i in indexes:
-                    if G_T[i] == 0:
-                        null_indexes.append(i)
-
-                if len(null_indexes) == 0:
-                    continue
-                
-                #!######################################
-                # remove_ind = []
-                # if len(eye) > 0 and len(null_indexes) > 1:
-                #     for j in range(1, len(null_indexes)):
-                #         G_T[null_indexes[j]] = eye.pop(0)
-                #         remove_ind.append(j)
-                # remove_ind = remove_ind[::-1]
-                # for i in remove_ind:
-                #     null_indexes.pop(i)     
-
-                #!######################################
-                
-                for i in null_indexes:
-                    random.seed(os.urandom(15))
-                    G_T[i] = random.randint(1, max_num)
-
-                # перший незаповнений елемент є сумою всіх інших елементів у строкі
-                res = 0
-                for i in indexes:
-                    if i == null_indexes[0]:
-                        continue
-                    res ^= G_T[i]
-                G_T[null_indexes[0]] = res if res > 0 else G_T[null_indexes[0]]
-
-
-                # якщо сума всіх елементів, окрім першого незаповненого рівняється 0,
-                # тоді має існувати, як мінімум два незаповнених елементи, 
-                # у такому разі достатньо перегенерувати другий незаповнений елемент, 
-                # і перерахувати перший незаповнений елемент
-
-                if G_T[null_indexes[0]] == 0:
-                    tmp = G_T[null_indexes[1]]
-                    while tmp == G_T[null_indexes[1]]:
-                        tmp = random.randint(1, max_num)
-
-                    G_T[null_indexes[0]] = G_T[null_indexes[1]] ^ tmp
-                    G_T[null_indexes[1]] = tmp
-
-                # indexes = get_indexes(itr)
-                # for i in range(len(indexes)):
-                #     indexes[i] = tt - indexes[i]
-                # sum = 0
-                # for i in indexes:
-                #     sum ^= G_T[i]
-                # ttt = 0
-
-            def split(matrix, k):
-                reslt_matrix = []
-                _len = k
-                for row in matrix:
-                    row = '0' * (_len - len(bin(row)[2:])) + bin(row)[2:]
-                    reslt_matrix.append([int(i, 2) for i in list(row)])
-                return reslt_matrix
-
-
-            # bed_ind = []
-            # # G_T = G_T
-            # for ind in range(len(bH)):
-            #     sum = 0
-            #     for i in bH[ind]:
-            #         if i:
-            #             sum ^= G_T[i]
-            #     if sum !=0:
-            #         bed_ind.append(ind)
-            # tt = 0
-
-
-            # GGT = split(G_T, self.__k)
-            # tt = np.dot(bH, GGT) %2
-            G = binary_transpose(G_T, self.__k)
-            
-            # tt = split(G, self.__n)
-            GG = split(G, self.__n)
-            if min(G) == 0:
-                continue
-            #     if is_transpose:
-            #         gg = split(G_T, 12)
-            #         return gg
-            #     gg = 
-            return split(G, self.__n)
-
-
-    # def __tmp_gen_H(self):
-    #     bH = self.__G #convert_to_binary_matrix(self.__H, self.__m)
-
-    #     gt_size = len(bH[0])
-    #     gt_size_element = self.__r * self.__m
-
-    #     equations = []
-    #     for row in bH:
-    #         equations.append(int(''.join([str(em) for em in row]), 2))
-
-    #     # приводимо систему рівнянь до трапецеїдального вигляду
-    #     for i in range(len(equations)):
-    #         # max_element = max(equations[i:])
-    #         ind = index_max_len(equations[i:]) + i
-    #         max_element = equations[ind]
-    #         len_max_element = len(bin(max_element)) - 2
-
-    #         equations[equations.index(max_element)] = equations[i]
-    #         equations[i] = max_element
-
-    #         for j in range(i + 1, len(equations)):
-    #             if equations[j] > 0 and len_max_element == (len(bin(equations[j])) - 2):
-    #                 equations[j] ^= max_element
-
-    #     tt = len(bin(equations[0])[2:]) - 1
-    #     equations = equations[::-1]
-    #     # equations = equations
-    #     max_num = 2**gt_size_element - 1 #2**(self.__m * self.__r) - 1
+        if T_error == [1, 0]:
+            return [1, 0]
         
-    #     while True:
-    #         # eye = [] #[2**i for i in range(self.__k)]
-    #         G_T = [0 for i in range(gt_size)]
-    #         # G_T =  [2**i for i in range(self.__k)][::-1] + [0 for i in range(gt_size - self.__k)]
-    #         for itr in equations:
-    #             indexes = get_indexes(itr)
-    #             for i in range(len(indexes)):
-    #                 indexes[i] = tt - indexes[i]
+        if len(T_error) > 1:
+            T_error[-2] ^= 1
+        else:
+            T_error = [1] + T_error
 
-    #             # знаходимо індекси всіх незаповнених елементів матриці G
-    #             null_indexes = []
-    #             for i in indexes:
-    #                 if G_T[i] == 0:
-    #                     null_indexes.append(i)
+        def get_s():
+            e = self.__m * self.__r - 1
+            x = [1, 0]
+            if e == 0:
+                return [1]
 
-    #             if len(null_indexes) == 0:
-    #                 continue
-                
-    #             #!######################################
-    #             # remove_ind = []
-    #             # if len(eye) > 0 and len(null_indexes) > 1:
-    #             #     for j in range(1, len(null_indexes)):
-    #             #         G_T[null_indexes[j]] = eye.pop(0)
-    #             #         remove_ind.append(j)
-    #             # remove_ind = remove_ind[::-1]
-    #             # for i in remove_ind:
-    #             #     null_indexes.pop(i)     
+            for i in range(e + 1):
+                s = copy(x)
+                s = div(copy(s), copy(self.__g))[1]
+                x = mul(copy(s), copy(x))
 
-    #             #!######################################
-                
-    #             for i in null_indexes:
-    #                 random.seed(os.urandom(15))
-    #                 G_T[i] = random.randint(1, max_num)
+            return s
 
-    #             # перший незаповнений елемент є сумою всіх інших елементів у строкі
-    #             res = 0
-    #             for i in indexes:
-    #                 if i == null_indexes[0]:
-    #                     continue
-    #                 res ^= G_T[i]
-    #             G_T[null_indexes[0]] = res if res > 0 else G_T[null_indexes[0]]
+        s = get_s()
 
-
-    #             # якщо сума всіх елементів, окрім першого незаповненого рівняється 0,
-    #             # тоді має існувати, як мінімум два незаповнених елементи, 
-    #             # у такому разі достатньо перегенерувати другий незаповнений елемент, 
-    #             # і перерахувати перший незаповнений елемент
-
-    #             if G_T[null_indexes[0]] == 0:
-    #                 tmp = G_T[null_indexes[1]]
-    #                 while tmp == G_T[null_indexes[1]]:
-    #                     tmp = random.randint(1, max_num)
-
-    #                 G_T[null_indexes[0]] = G_T[null_indexes[1]] ^ tmp
-    #                 G_T[null_indexes[1]] = tmp
-
-    #             # indexes = get_indexes(itr)
-    #             # for i in range(len(indexes)):
-    #             #     indexes[i] = tt - indexes[i]
-    #             sum = 0
-    #             for i in indexes:
-    #                 sum ^= G_T[i]
-    #             ttt = 0
-
-    #         def split(matrix, k):
-    #             reslt_matrix = []
-    #             _len = k
-    #             for row in matrix:
-    #                 row = '0' * (_len - len(bin(row)[2:])) + bin(row)[2:]
-    #                 reslt_matrix.append([int(i, 2) for i in list(row)])
-    #             return reslt_matrix
-
-
-    #         # bed_ind = []
-    #         # # G_T = G_T
-    #         # for ind in range(len(bH)):
-    #         #     sum = 0
-    #         #     for i in bH[ind]:
-    #         #         if i:
-    #         #             sum ^= G_T[i]
-    #         #     if sum !=0:
-    #         #         bed_ind.append(ind)
-    #         # tt = 0
-
-
-    #         # GGT = split(G_T, self.__k)
-    #         # tt = np.dot(bH, GGT) %2
-    #         G = binary_transpose(G_T, gt_size_element)
+        def square_root_p(element):
+            element = element[::-1]
+            e = 2 ** (self.__m - 1)
+            s1 = [self.__pow(element[2 * i], e) for i in range((self.__r - 1) // 2 + 1)][::-1]
             
-    #         # tt = split(G, self.__n)
-    #         GG = split(G, gt_size)
-    #         if min(G) == 0:
-    #             continue
-    #         #     if is_transpose:
-    #         #         gg = split(G_T, 12)
-    #         #         return gg
-    #         #     gg = 
-    #         return split(G, gt_size)
+            s2 = [self.__pow(element[2 * i + 1], e) for i in range(self.__r // 2)][::-1]
+            s2 = mul(s2, get_s())
 
+            s = [x1 ^ x2 for x1, x2 in zip_longest(s1[::-1], s2[::-1], fillvalue=0)][::-1]
+            return div(list(s), self.__g)[1]
+
+        sr = square_root_p(T_error)
+
+        def mini_euclid(element):
+            v = [[0], [1]]
+            rem = None
+            value = copy(element)
+            a = copy(self.__g)
+
+            while (len(value) - 1) > (self.__r // 2) and (len(a) - 1) <= (self.__r // 2):
+                t = div(copy(a), copy(value))
+                tmp = t[0]
+                rem = t[1]
+
+                tmp_mul = mul(copy(v[1]), copy(tmp))
+                v[0] = v[0] + [0 for i in range(len(tmp_mul) - len(v[0]))]
+                for i in range(len(v[0])):
+                    v[0][i] ^= tmp_mul[i]
+                v[0], v[1] = v[1], v[0]
+                a = copy(value)
+                value = copy(rem)
+
+            return [value, v[1]]
+
+        t = mini_euclid(sr)
+
+        r = mul(t[0], t[0])
+        v = mul(t[1], t[1])
+        v = v + [0]
+
+        sigma = [x1 ^ x2 for x1, x2 in zip_longest(r[::-1], v[::-1], fillvalue=0)][::-1]
+        return sigma
+
+
+    def __errors(self, msg):
+        def sigma(_x, pol):
+            x = 1
+            sum = 0
+            pol = pol[::-1]
+            for i in pol:
+                sum ^= self.__mul(x, i)
+                x = self.__mul(x, _x)
+            return sum
+
+        sig = self.__sigma(msg)
+        if sig == None:
+            return np.zeros(self.__n).astype(np.uint64)
+
+        roots = [i for i in self.__L if sigma(i, sig) == 0]
+        indx = [self.__L.index(el) for el in roots]
+        res = np.zeros(self.__n).astype(np.uint64)
+        for i in indx:
+            res[i] = 1
+        return res
+
+
+    def error_corrections(self, msg, H = None):
+        # знаходимо помилки
+        err = self.__errors(msg)
+
+        # прибираємо помилки
+        msg = msg ^ err
+
+        return msg
 
 
 if __name__ == '__main__':
-   GoppaCode(19, [1,1,1], 12)
+    GoppaCode(19, [1,1,1], 12)

@@ -116,12 +116,13 @@ def div_p(divided, divider, pol):
         while len(divided) > 0 and divided[0] == 0:
             divided.pop(0)
     
-    if len(divided) == 0:
-        return [1, 0]
+    
 
     quotient = quotient[::-1]
     while len(quotient) > 0 and quotient[0] == 0:
         quotient.pop(0)
+    if len(divided) == 0:
+        divided = [0]
     return [quotient, divided]
 
 
@@ -159,10 +160,14 @@ def mod_inverse(value, module):
 # pol заданий як десяткове число
 # g заданий як list; g[0] -- найстарший елемент
 def mod_inverse_p(element, g, pol):
+    if len(element) == 1:
+        return [mod_inverse(element[0], pol)]
+
     v = [[0], [1]]
     rem = None
     value = element
     a = copy(g)
+
 
     while rem == None or len(rem) > 1:
         t = div_p(copy(a), copy(value), pol)
@@ -223,50 +228,7 @@ def sum(a):
     return res
 
 
-# def mul_vectors(v1, v2, pol):
-#     if len(v1) != len(v2):
-#         raise Exception("Mul vectors")
-
-#     return
-
-
-# def mul_matrix(m1, m2, pol):
-#     # m1 = [
-#     #     [1, 5, 12, 4, 10, 3, 1, 3, 4, 2, 2, 10], 
-#     #     [8, 11, 13, 9, 1, 0, 9, 3, 13, 14, 12, 11]
-#     # ]
-
-#     # m2 = [
-#     #     [0, 0, 1, 1],
-#     #     [1, 1, 1, 1],
-#     #     [1, 1, 0, 1],
-#     #     [0, 1, 1, 0],
-#     #     [1, 1, 1, 1],
-#     #     [0, 0, 0, 1],
-#     #     [1, 0, 0, 0],
-#     #     [0, 1, 0, 1],
-#     #     [0, 1, 0, 0],
-#     #     [1, 0, 0, 0],
-#     #     [0, 0, 0, 1],
-#     #     [0, 0, 1, 0]
-#     # ]
-#     # m1 = convert_to_binary_matrix(m1, 4)
-#     m2 = transpose(m2)
-
-#     result = []
-#     for m1_row in m1:
-#         result.append([])
-#         for m2_row in m2:
-#             result[-1].append(sum([mul(x1, x2, pol) for x1, x2 in zip(m1_row, m2_row)]))
-
-#     return result
-
-
 def convert_to_binary_matrix(matrix, element_len):
-    # matrix = [
-    #     [1, 5, 12, 4, 10, 3, 1, 3, 4, 2, 2, 10], 
-    #     [8, 11, 13, 9, 1, 0, 9, 3, 13, 14, 12, 11]
-    # ]
     matrix = transpose(matrix)
     bmatrix = []
     for row in matrix:
@@ -284,8 +246,9 @@ def index_max_len(elements):
             max_len = len(bin(elements[i]))
             ind = i
     return ind
-
-
+ 
 
 if __name__ == '__main__':
     pass
+    for i in range(1,19):
+        print(mod_inverse(i, 19))
