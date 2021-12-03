@@ -227,7 +227,7 @@ class GoppaCode:
                 S_error[j] ^= inv[j]
 
         # S_error = S_error[::-1]
-        if sum(S_error) == 0:
+        if S_error.count(0) == len(S_error):
             return None
 
         T_error = inverse(S_error)

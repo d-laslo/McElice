@@ -1,7 +1,9 @@
+from itertools import count
 from GoppaCode import GoppaCode as GC
 from source import *
 from random import sample
 import numpy as np
+from random import randint
 
 class McEliece:
     def __init__(self, p, g, n = 0):
@@ -116,10 +118,13 @@ class McEliece:
         n = len(Gh[0])
 
         err = np.zeros(n, np.uint64)
-        for i in sample(range(n), t):
+        for i in sample(range(n-1), t):
             err[i] = 1
 
         bmsg = self.__convert_to_binary_vector(msg, k)
+        
+        # err = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1]).astype(np.uint64)
+        # err = self.__dot(err, self.__P)
         return self.__convert_to_num(self.__dot(bmsg, Gh) ^ err)
 
 
@@ -146,7 +151,12 @@ if __name__ == '__main__':
     n = 12
     mc = McEliece(p, g ,n)
 
-    e_msg = mc.encrypt(2, mc.publick_key)
-    d_msg = mc.decrypt(e_msg, mc.private_key)
-    print(d_msg)
-    t = 0
+    res = []
+
+    for i in range(1000):
+        rr = randint(1, 15)
+        e_msg = mc.encrypt(rr, mc.publick_key)
+        d_msg = mc.decrypt(e_msg, mc.private_key)
+        res.append(rr == d_msg)
+
+    print(res.count(True))
