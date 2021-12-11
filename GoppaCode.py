@@ -19,8 +19,9 @@ class GoppaCode:
             self.__k = self.__n - self.__m * self.__t
             self.__d = self.__n - self.__k + 1
 
-            self.__L = self.__gen_L()
+            
             self.__prime_element = self.__get_prime_element()
+            self.__L = self.__gen_L()
             self.__g = self.__get_g(g)
             self.__H = self.__gen_H()
             self.__G = self.__gen_G()
@@ -82,7 +83,19 @@ class GoppaCode:
 
     
     def __get_prime_element(self):
-        return 8
+        def tr(x):
+            t = x
+            for i in range(self.__m - 1):
+                t = mul(t, t, self.__p) ^ x 
+            return t
+
+        t = 0
+        for i in range(2, 2**self.__m):
+            if tr(i) == 1:
+                t = i
+                break
+
+        return t
 
     
     def __get_g(self, g):
@@ -108,18 +121,15 @@ class GoppaCode:
         prime = self.__g[-1]
         res = 0
         for i in range(len(g)):
-            res ^= self.__pow(x, i + 1) * g[i]
+            res ^= self.__pow(x, i + 1)
 
         return res ^ prime
 
     
     def __gen_L(self):
-        L = [0, 1]
-        for i in range(2, self.__n):
-            r = L[-1] << 1
-            if len(bin(r)[2:]) > self.__m:
-                r ^= self.__p
-            L.append(r)
+        L = []
+        for i in range(self.__n):
+            L.append(i)
 
         return L
 
@@ -147,7 +157,7 @@ class GoppaCode:
 
         def swap_columns(x, ind1, ind2):
             for i in range(len(x)):
-                x[i][ind1], x[i][ind2]= x[i][ind2], x[i][ind1]
+                x[i][ind1], x[i][ind2] = x[i][ind2], x[i][ind1]
             self.__L[ind1], self.__L[ind2] = self.__L[ind2], self.__L[ind1]
 
         def find_column_ind(x, ind):
