@@ -1,8 +1,8 @@
-from itertools import count
 from GoppaCode import GoppaCode as GC
 from source import *
 from random import sample
 import numpy as np
+from copy import copy
 from random import randint
 
 class McEliece:
@@ -39,7 +39,7 @@ class McEliece:
 
 
     def __dot(self, x1, x2):
-        return np.dot(x1, x2).astype(np.uint64) % 2
+        return np.dot(x1, x2).astype(np.uint64) %2
 
 
     def __gen_P(self):
@@ -55,28 +55,70 @@ class McEliece:
             raise Exception()
         return np.array(P).T.astype(np.uint64)
 
+    
+    def __det(self, z):
+        GG = z
+        size = len(z)
+
+        def find_indx(x, ind):
+            for i in range(len(x)):
+                if x[i][ind] == 1:
+                    return i
+            return None
+
+        for i in range(size):
+            ind = find_indx(GG[i:], i)
+            if ind == None:
+                continue
+                
+            ind += i
+
+            max_element = copy(GG[ind])
+            
+            GG[ind] = copy(GG[i])
+            GG[i] = copy(max_element)
+
+            for j in range(i + 1,size):
+                if GG[j][i] == 1:
+                    GG[j] ^= max_element
+        if  [GG[i][i] for i in range(size)].count(1) == size:
+            return 1
+        return 0
+
+
+    def __adjoin(self, m):
+        size = len(m)
+        res = np.array([[0 for i in range(size)] for j in range(size)])
+        for i in range(size):
+            for j in range(size):
+                t = copy(m)
+                t = np.delete(t, i, 0)
+                t = np.delete(t, j, 1)
+                res[i, j] = self.__det(t)
+        return res
+                
+
+
 
     def __gen_S(self):
-        t = 0
         S = []
-        while t == 0:
+        while True:
             S = np.array(np.random.randint(0, 2, self.__GC.k ** 2))
             S = S.reshape((self.__GC.k, self.__GC.k))
-            t = np.linalg.det(S) % 2
+            # size = 20
+            # S = np.array(np.random.randint(0, 2, size ** 2))
+            # S = S.reshape((size, size))
+            st = copy(S)
+            if self.__det(st) == 1:
+                break
 
-        S = np.array([
-            [1, 1, 0, 0],
-            [0, 0, 1, 1],
-            [0, 0, 0, 1],
-            [0, 1, 1, 0]
-        ], dtype=np.uint64)
         return S
 
 
     def __calc_inv_S(self, S):
         if len(S) == 0:
             raise Exception()
-        return np.linalg.inv(S).astype(np.uint64) % 2
+        return self.__adjoin(S).T
 
 
     def __gen_key_parameters(self):
@@ -146,17 +188,23 @@ class McEliece:
 
 
 if __name__ == '__main__':
-    p = 19
-    g = [1,1,1]
-    n = 12
+    # p = 19
+    # g = [1,1,1]
+    # n = 12
+    p = convert2num('z^12 + z^3 + 1')
+    g = convert2vector('y^64 + y^3 + y + 1')
+    n = 3488
     mc = McEliece(p, g ,n)
 
-    res = []
+    e_msg = mc.encrypt(5, mc.publick_key)
+    d_msg = mc.decrypt(e_msg, mc.private_key)
 
-    for i in range(1000):
-        rr = randint(1, 15)
-        e_msg = mc.encrypt(rr, mc.publick_key)
-        d_msg = mc.decrypt(e_msg, mc.private_key)
-        res.append(rr == d_msg)
+    # res = []
 
-    print(res.count(True))
+    # for i in range(1000):
+    #     rr = randint(1, 15)
+    #     e_msg = mc.encrypt(rr, mc.publick_key)
+    #     d_msg = mc.decrypt(e_msg, mc.private_key)
+    #     res.append(rr == d_msg)
+
+    # print(res.count(True))
