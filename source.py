@@ -1,5 +1,6 @@
 import numpy as np
 from copy import copy
+import re
 
 
 def read(path):
@@ -246,9 +247,25 @@ def index_max_len(elements):
             max_len = len(bin(elements[i]))
             ind = i
     return ind
+
+
+def convert2num(pol):
+    pows = [int(i) for i in re.findall(r'\w\^(\d*)', pol)]
+    res = 1
+    for i in pows:
+        res ^= (1 << i)
+
+    return res
+
+def convert2vector(pol):
+    pows = [int(i) for i in re.findall(r'\w\^(\d*)', pol)]
+    res = [0 for i in range(max(pows) + 1)]
+    for i in pows:
+        res[i] = 1
+    res[0] = 1
+    return res[::-1]
  
 
 if __name__ == '__main__':
     pass
-    for i in range(1,19):
-        print(mod_inverse(i, 19))
+    print(convert2vector('x^5+x^3+1'))
